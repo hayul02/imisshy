@@ -1,0 +1,2416 @@
+<!DOCTYPE html>
+
+<html lang="ko">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>중력 슬링샷: 우주 탐사 시뮬레이터</title>
+
+    <!-- Tailwind CSS CDN -->
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- FontAwesome for Icons -->
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Google Fonts Inter -->
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+
+        body {
+
+            font-family: 'Inter', sans-serif;
+
+            background-color: #050814;
+
+            color: #f3f4f6;
+
+            overflow-x: hidden;
+
+            user-select: none;
+
+        }
+
+        .code-font {
+
+            font-family: 'JetBrains Mono', monospace;
+
+        }
+
+        /* Custom scrollbar for HUD panels */
+
+        ::-webkit-scrollbar {
+
+            width: 6px;
+
+            height: 6px;
+
+        }
+
+        ::-webkit-scrollbar-track {
+
+            background: rgba(15, 23, 42, 0.6);
+
+        }
+
+        ::-webkit-scrollbar-thumb {
+
+            background: rgba(59, 130, 246, 0.5);
+
+            border-radius: 3px;
+
+        }
+
+        .glow-blue {
+
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+
+        }
+
+        .glow-purple {
+
+            box-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
+
+        }
+
+        canvas {
+
+            touch-action: none;
+
+        }
+
+    </style>
+
+</head>
+
+<body class="min-h-screen flex flex-col bg-slate-950 text-slate-100">
+
+
+
+    <!-- Top Navigation Header -->
+
+    <header class="w-full bg-slate-900/90 border-b border-slate-800 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 z-20 backdrop-blur-md">
+
+        <div class="flex items-center space-x-3">
+
+            <div class="p-2 bg-blue-600/20 border border-blue-500/40 rounded-xl text-blue-400">
+
+                <i class="fa-solid font-bold fa-planet text-xl"></i>
+
+            </div>
+
+            <div>
+
+                <h1 class="text-lg font-extrabold tracking-wide bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent">
+
+                    GRAVITY SLINGSHOT
+
+                </h1>
+
+                <p class="text-xs text-slate-400">물리/수학 우주 탐사 시뮬레이터</p>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- Dynamic Game Status HUD -->
+
+        <div class="flex items-center space-x-4 text-xs sm:text-sm font-medium">
+
+            <div class="bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700/60 flex items-center space-x-2">
+
+                <span class="text-slate-400">레벨:</span>
+
+                <span id="hud-level" class="text-amber-400 font-bold">1. 달 궤도 슬링샷</span>
+
+            </div>
+
+            <div class="bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700/60 flex items-center space-x-2">
+
+                <span class="text-slate-400">시도:</span>
+
+                <span id="hud-attempts" class="text-blue-400 font-bold">0</span>
+
+            </div>
+
+            <div class="bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700/60 flex items-center space-x-2">
+
+                <span class="text-slate-400">연구 데이터:</span>
+
+                <span id="hud-score" class="text-emerald-400 font-bold">0 / 0</span>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- Action Controls & Modals Trigger -->
+
+        <div class="flex items-center space-x-2">
+
+            <button id="btn-math-modal" class="px-3 py-1.5 text-xs bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/40 rounded-lg transition-all flex items-center space-x-1.5">
+
+                <i class="fa-solid fa-atom text-indigo-400"></i>
+
+                <span class="hidden md:inline">물리 공식/생기부</span>
+
+            </button>
+
+            <button id="btn-leaderboard" class="px-3 py-1.5 text-xs bg-amber-600/30 hover:bg-amber-600/50 text-amber-300 border border-amber-500/40 rounded-lg transition-all flex items-center space-x-1.5">
+
+                <i class="fa-solid fa-trophy text-amber-400"></i>
+
+                <span class="hidden md:inline">부스 랭킹</span>
+
+            </button>
+
+            <button id="btn-sound-toggle" class="p-2 text-slate-300 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700">
+
+                <i class="fa-solid fa-volume-high" id="sound-icon"></i>
+
+            </button>
+
+        </div>
+
+    </header>
+
+
+
+    <!-- Main Content Layout -->
+
+    <div class="flex-1 flex flex-col lg:flex-row relative overflow-hidden">
+
+
+
+        <!-- Simulation Canvas Container -->
+
+        <div class="flex-1 relative bg-slate-950 flex items-center justify-center min-h-[400px] lg:min-h-0">
+
+            <canvas id="simCanvas" class="w-full h-full cursor-crosshair border-b lg:border-b-0 lg:border-r border-slate-800"></canvas>
+
+
+
+            <!-- Floating Canvas Quick Controls -->
+
+            <div class="absolute top-4 left-4 z-10 flex flex-wrap gap-2">
+
+                <button id="btn-reset-launch" class="bg-rose-600/80 hover:bg-rose-600 text-white text-xs px-3 py-2 rounded-lg font-semibold shadow-lg backdrop-blur border border-rose-400/40 transition flex items-center space-x-1">
+
+                    <i class="fa-solid fa-rotate-left"></i>
+
+                    <span>재시도 (R)</span>
+
+                </button>
+
+                <button id="btn-toggle-vectors" class="bg-slate-800/80 hover:bg-slate-700 text-slate-200 text-xs px-3 py-2 rounded-lg font-semibold shadow-lg backdrop-blur border border-slate-700 transition flex items-center space-x-1">
+
+                    <i class="fa-solid fa-arrows-up-down-left-right text-cyan-400"></i>
+
+                    <span id="vector-toggle-text">중력장 표시: ON</span>
+
+                </button>
+
+                <button id="btn-toggle-grid" class="bg-slate-800/80 hover:bg-slate-700 text-slate-200 text-xs px-3 py-2 rounded-lg font-semibold shadow-lg backdrop-blur border border-slate-700 transition flex items-center space-x-1">
+
+                    <i class="fa-solid fa-border-all text-purple-400"></i>
+
+                    <span id="grid-toggle-text">중력 격자: OFF</span>
+
+                </button>
+
+            </div>
+
+
+
+            <!-- Launch Overlay Hint -->
+
+            <div id="launch-hint" class="absolute bottom-6 left-1/2 -translate-x-1/2 pointer-events-none bg-slate-900/85 border border-slate-700/80 text-slate-300 text-xs md:text-sm px-4 py-2 rounded-full shadow-2xl backdrop-blur flex items-center space-x-2 animate-bounce">
+
+                <i class="fa-solid fa-hand-pointer text-blue-400"></i>
+
+                <span>탐사선을 **클릭/드래그**하여 발사각과 추진력을 조절하세요!</span>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- Right Control & Telemetry Sidebar -->
+
+        <aside class="w-full lg:w-96 bg-slate-900/70 border-t lg:border-t-0 lg:border-l border-slate-800 p-4 flex flex-col justify-between space-y-4 overflow-y-auto">
+
+            
+
+            <!-- Level Selector & Launch Controls -->
+
+            <div class="space-y-4">
+
+                <div class="bg-slate-800/50 p-3 rounded-xl border border-slate-700/50">
+
+                    <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-2">스테이지 선택</label>
+
+                    <select id="level-select" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-blue-300 font-semibold focus:outline-none focus:border-blue-500">
+
+                        <option value="0">Level 1: 달 궤도 슬링샷 (기본)</option>
+
+                        <option value="1">Level 2: 쌍성계 8자 궤도 (난이도 중)</option>
+
+                        <option value="2">Level 3: 블랙홀 워프 탈출 (고난도)</option>
+
+                        <option value="3">Level 4: 소행성지대 우회 탐사</option>
+
+                        <option value="4">Level 5: 동적 공전 행성 탐사 (최고난도)</option>
+
+                        <option value="5">🛠️ 샌드박스 (자유 실험실)</option>
+
+                    </select>
+
+                </div>
+
+
+
+                <!-- Launch Precision Tuning Sliders -->
+
+                <div class="bg-slate-800/50 p-3.5 rounded-xl border border-slate-700/50 space-y-3">
+
+                    <div class="flex justify-between items-center">
+
+                        <span class="text-xs font-semibold text-slate-300">발사 세부 조절</span>
+
+                        <span class="text-[10px] text-slate-400">수치 정밀 조작 가능</span>
+
+                    </div>
+
+
+
+                    <div>
+
+                        <div class="flex justify-between text-xs mb-1">
+
+                            <span class="text-slate-400">발사각 ($\theta$):</span>
+
+                            <span id="val-angle" class="code-font text-cyan-400 font-bold">45.0°</span>
+
+                        </div>
+
+                        <input type="range" id="slider-angle" min="0" max="360" value="45" step="0.5" class="w-full accent-cyan-500 cursor-pointer">
+
+                    </div>
+
+
+
+                    <div>
+
+                        <div class="flex justify-between text-xs mb-1">
+
+                            <span class="text-slate-400">초속도 ($v_0$):</span>
+
+                            <span id="val-power" class="code-font text-emerald-400 font-bold">6.50 km/s</span>
+
+                        </div>
+
+                        <input type="range" id="slider-power" min="1" max="15" value="6.5" step="0.1" class="w-full accent-emerald-500 cursor-pointer">
+
+                    </div>
+
+
+
+                    <button id="btn-manual-launch" class="w-full py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold rounded-lg shadow-lg transition flex items-center justify-center space-x-2">
+
+                        <i class="fa-solid fa-rocket"></i>
+
+                        <span>탐사선 발사 (Launch)</span>
+
+                    </button>
+
+                </div>
+
+
+
+                <!-- Real-time Physics Telemetry -->
+
+                <div class="bg-slate-800/50 p-3.5 rounded-xl border border-slate-700/50 space-y-2">
+
+                    <div class="flex items-center justify-between mb-1">
+
+                        <span class="text-xs font-semibold text-slate-300 flex items-center space-x-1">
+
+                            <i class="fa-solid fa-gauge-high text-amber-400"></i>
+
+                            <span>실시간 물리 텔레메트리</span>
+
+                        </span>
+
+                        <span id="sim-status-badge" class="text-[10px] px-2 py-0.5 rounded-full bg-slate-700 text-slate-300">대기 중</span>
+
+                    </div>
+
+
+
+                    <div class="grid grid-cols-2 gap-2 text-xs code-font">
+
+                        <div class="bg-slate-950 p-2 rounded border border-slate-800">
+
+                            <div class="text-[10px] text-slate-500">속도 |v|</div>
+
+                            <div id="tele-vel" class="text-emerald-400 font-bold">0.00 km/s</div>
+
+                        </div>
+
+                        <div class="bg-slate-950 p-2 rounded border border-slate-800">
+
+                            <div class="text-[10px] text-slate-500">중력 가속도 |a|</div>
+
+                            <div id="tele-acc" class="text-purple-400 font-bold">0.00 m/s²</div>
+
+                        </div>
+
+                        <div class="bg-slate-950 p-2 rounded border border-slate-800">
+
+                            <div class="text-[10px] text-slate-500">최근접 거리 (r_min)</div>
+
+                            <div id="tele-rmin" class="text-cyan-400 font-bold">---</div>
+
+                        </div>
+
+                        <div class="bg-slate-950 p-2 rounded border border-slate-800">
+
+                            <div class="text-[10px] text-slate-500">비역학적 에너지 (E)</div>
+
+                            <div id="tele-energy" class="text-amber-400 font-bold">0.00 J/kg</div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- Sandbox Custom Controls (Shown only in Sandbox Mode) -->
+
+                <div id="sandbox-controls" class="hidden bg-purple-950/30 p-3.5 rounded-xl border border-purple-500/40 space-y-3">
+
+                    <div class="text-xs font-bold text-purple-300 flex items-center justify-between">
+
+                        <span>🛠️ 샌드박스 행성배치</span>
+
+                        <span class="text-[10px] text-purple-400">캔버스 클릭 시 행성 생성</span>
+
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+
+                        <div>
+
+                            <label class="text-slate-400 text-[10px] block">행성 질량 (M)</label>
+
+                            <input type="number" id="sb-mass" value="1200" class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-slate-200">
+
+                        </div>
+
+                        <div>
+
+                            <label class="text-slate-400 text-[10px] block">중력 상수 (G)</label>
+
+                            <input type="number" id="sb-g" value="1.0" step="0.1" class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-slate-200">
+
+                        </div>
+
+                    </div>
+
+                    <button id="btn-clear-sandbox" class="w-full py-1 text-xs bg-purple-800/50 hover:bg-purple-700 text-purple-200 rounded border border-purple-600/40">
+
+                        모든 행성 초기화
+
+                    </button>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- Academic Info Banner -->
+
+            <div class="bg-gradient-to-r from-blue-950/40 to-indigo-950/40 p-3 rounded-xl border border-blue-800/40 text-[11px] text-slate-300 leading-relaxed">
+
+                <i class="fa-solid fa-lightbulb text-amber-400 mr-1"></i>
+
+                <span class="font-semibold text-blue-300">물리 핵심:</span> 행성의 중력장에 진입하여 운동 에너지를 얻는 **중력 도움(Gravity Assist/Slingshot)** 원리 시뮬레이션입니다.
+
+            </div>
+
+        </aside>
+
+    </div>
+
+
+
+    <!-- Academic Physics & Academic Info Modal -->
+
+    <div id="modal-math" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 space-y-5 shadow-2xl">
+
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+
+                <h2 class="text-lg font-extrabold text-blue-400 flex items-center space-x-2">
+
+                    <i class="fa-solid fa-atom"></i>
+
+                    <span>생기부 세특 연계: 중력 슬링샷 학술 원리</span>
+
+                </h2>
+
+                <button class="btn-close-modal text-slate-400 hover:text-white text-xl">
+
+                    <i class="fa-solid fa-xmark"></i>
+
+                </button>
+
+            </div>
+
+
+
+            <!-- Physics Explanations -->
+
+            <div class="space-y-4 text-xs md:text-sm text-slate-300 leading-relaxed">
+
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+
+                    <h3 class="font-bold text-amber-400 text-sm">1. 만유인력의 법칙 & 수치 해석 (Euler-Verlet Algorithm)</h3>
+
+                    <p>본 게임 시뮬레이션은 뉴턴의 만유인력 법칙을 기반으로 매 프레임($\Delta t$)마다 탐사선에 작용하는 알짜 가속도를 계산합니다.</p>
+
+                    <div class="code-font bg-slate-900 p-2.5 rounded text-cyan-300 text-xs overflow-x-auto">
+
+                        F = G * (M * m) / r²  →  a = ∑ G * M_i / r_i² * u_vector
+
+                    </div>
+
+                    <p class="text-slate-400 text-xs">속도 베를레(Velocity Verlet) 수치적 미분방정식 근사 기법을 사용하여 미세 시간 동안의 위치 변화를 안정적으로 연산합니다.</p>
+
+                </div>
+
+
+
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+
+                    <h3 class="font-bold text-emerald-400 text-sm">2. 중력 슬링샷 (Gravity Assist / Swing-by) 메커니즘</h3>
+
+                    <p>움직이는 행성의 중력 우물(Gravity Well)에 접근할 때, 탐사선은 행성의 공전 운동 에너지를 일부 전달받아 연료 소비 없이 속도 벡터의 방향과 크기를 극적으로 변환합니다.</p>
+
+                </div>
+
+
+
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+
+                    <h3 class="font-bold text-purple-400 text-sm">3. 생활기록부 작성 추천 키워드 및 작성 예시</h3>
+
+                    <ul class="list-disc pl-5 space-y-1 text-xs text-slate-300">
+
+                        <li><strong class="text-blue-300">핵심 키워드:</strong> 만유인력 수치 해석, Velocity Verlet 알고리즘, 궤도 궤적 예측, Vector Dot/Cross Product, 중력 섭동.</li>
+
+                        <li><strong class="text-blue-300">세특 작성 예시:</strong> <em>"물리학I 과목에서 배운 만유인력 개념을 바탕으로 JavaScript HTML5 Canvas 기반의 '중력 슬링샷 우주 탐사 시뮬레이터'를 직접 제작함. Euler 및 Verlet 수치해석 방법을 비교하며 연산 오차를 최소화하고, 실시간 중력장 벡터필드 시각화 알고리즘을 구현함..."</em></li>
+
+                    </ul>
+
+                </div>
+
+            </div>
+
+
+
+            <div class="flex justify-end pt-2">
+
+                <button class="btn-close-modal bg-blue-600 hover:bg-blue-500 text-white font-bold px-5 py-2 rounded-xl text-sm transition">
+
+                    닫기 및 게임 복귀
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- Leaderboard Modal -->
+
+    <div id="modal-leaderboard" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+
+                <h2 class="text-lg font-extrabold text-amber-400 flex items-center space-x-2">
+
+                    <i class="fa-solid fa-trophy"></i>
+
+                    <span>동아리 부스 랭킹보드</span>
+
+                </h2>
+
+                <button class="btn-close-modal text-slate-400 hover:text-white text-xl">
+
+                    <i class="fa-solid fa-xmark"></i>
+
+                </button>
+
+            </div>
+
+
+
+            <div class="text-xs text-slate-400">최소 발사 시도 횟수 및 연구 데이터 수집 랭킹</div>
+
+
+
+            <div id="leaderboard-list" class="space-y-2 max-h-60 overflow-y-auto pr-1">
+
+                <!-- Leaderboard items inserted dynamically -->
+
+            </div>
+
+
+
+            <div class="flex justify-between items-center pt-2">
+
+                <button id="btn-clear-scores" class="text-xs text-rose-400 hover:underline">기록 초기화</button>
+
+                <button class="btn-close-modal bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-xl text-xs">닫기</button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- Level Complete / Victory Modal -->
+
+    <div id="modal-victory" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+
+        <div class="bg-slate-900 border border-emerald-500/50 rounded-2xl max-w-md w-full p-6 space-y-5 text-center shadow-2xl glow-blue">
+
+            <div class="w-16 h-16 bg-emerald-500/20 border border-emerald-400/40 rounded-full flex items-center justify-center mx-auto text-emerald-400 text-3xl">
+
+                <i class="fa-solid fa-circle-check"></i>
+
+            </div>
+
+
+
+            <div>
+
+                <h2 class="text-2xl font-black text-white">미션 성공!</h2>
+
+                <p class="text-xs text-slate-400 mt-1">목적지 우주선/워프홀 탐사 완료</p>
+
+            </div>
+
+
+
+            <!-- Stats Summary -->
+
+            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 grid grid-cols-2 gap-3 text-xs">
+
+                <div>
+
+                    <div class="text-slate-500">발사 시도</div>
+
+                    <div id="vic-attempts" class="text-lg font-bold text-amber-400">1회</div>
+
+                </div>
+
+                <div>
+
+                    <div class="text-slate-500">연구 데이터 수집</div>
+
+                    <div id="vic-data" class="text-lg font-bold text-emerald-400">3 / 3</div>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- Record Name Input -->
+
+            <div class="space-y-1 text-left">
+
+                <label class="text-xs text-slate-300">부스 랭킹 등록 (이름/학번):</label>
+
+                <input type="text" id="player-name-input" placeholder="예: 20101 홍길동" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+
+            </div>
+
+
+
+            <div class="flex space-x-2 pt-2">
+
+                <button id="btn-save-record" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition">
+
+                    기록 저장
+
+                </button>
+
+                <button id="btn-next-level" class="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition">
+
+                    다음 레벨
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <script>
+
+        // Game Sound Synthesizer via Web Audio API
+
+        class SoundEngine {
+
+            constructor() {
+
+                this.ctx = null;
+
+                this.muted = false;
+
+            }
+
+
+
+            init() {
+
+                if (!this.ctx) {
+
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+                }
+
+            }
+
+
+
+            playTone(freq, duration, type = 'sine', volume = 0.1) {
+
+                if (this.muted) return;
+
+                this.init();
+
+                try {
+
+                    const osc = this.ctx.createOscillator();
+
+                    const gain = this.ctx.createGain();
+
+                    osc.type = type;
+
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+
+                    gain.gain.setValueAtTime(volume, this.ctx.currentTime);
+
+                    gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+
+                    osc.connect(gain);
+
+                    gain.connect(this.ctx.destination);
+
+                    osc.start();
+
+                    osc.stop(this.ctx.currentTime + duration);
+
+                } catch (e) {}
+
+            }
+
+
+
+            playLaunch() {
+
+                if (this.muted) return;
+
+                this.init();
+
+                try {
+
+                    const osc = this.ctx.createOscillator();
+
+                    const gain = this.ctx.createGain();
+
+                    osc.type = 'sawtooth';
+
+                    osc.frequency.setValueAtTime(120, this.ctx.currentTime);
+
+                    osc.frequency.exponentialRampToValueAtTime(450, this.ctx.currentTime + 0.3);
+
+                    gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+
+                    gain.gain.linearRampToValueAtTime(0.001, this.ctx.currentTime + 0.3);
+
+                    osc.connect(gain);
+
+                    gain.connect(this.ctx.destination);
+
+                    osc.start();
+
+                    osc.stop(this.ctx.currentTime + 0.3);
+
+                } catch (e) {}
+
+            }
+
+
+
+            playCollect() {
+
+                this.playTone(880, 0.15, 'sine', 0.15);
+
+                setTimeout(() => this.playTone(1174.66, 0.2, 'sine', 0.15), 80);
+
+            }
+
+
+
+            playCrash() {
+
+                this.playTone(100, 0.4, 'sawtooth', 0.25);
+
+            }
+
+
+
+            playWin() {
+
+                const notes = [523.25, 659.25, 783.99, 1046.50];
+
+                notes.forEach((n, i) => {
+
+                    setTimeout(() => this.playTone(n, 0.25, 'triangle', 0.2), i * 120);
+
+                });
+
+            }
+
+        }
+
+
+
+        const audio = new SoundEngine();
+
+
+
+        // Vector Helper Class
+
+        class Vec2 {
+
+            constructor(x = 0, y = 0) {
+
+                this.x = x;
+
+                this.y = y;
+
+            }
+
+            set(x, y) { this.x = x; this.y = y; return this; }
+
+            copy() { return new Vec2(this.x, this.y); }
+
+            add(v) { this.x += v.x; this.y += v.y; return this; }
+
+            sub(v) { this.x -= v.x; this.y -= v.y; return this; }
+
+            mult(n) { this.x *= n; this.y *= n; return this; }
+
+            div(n) { this.x /= n; this.y /= n; return this; }
+
+            mag() { return Math.sqrt(this.x * this.x + this.y * this.y); }
+
+            normalize() { const m = this.mag(); if (m !== 0) this.div(m); return this; }
+
+            dist(v) { return Math.sqrt((this.x - v.x) ** 2 + (this.y - v.y) ** 2); }
+
+        }
+
+
+
+        // Global Simulation Constants
+
+        const G = 1200; // Gravitational constant for arcade physics
+
+        const DT = 0.016; // Physics timestep
+
+
+
+        // Game Level Definitions
+
+        const LEVELS = [
+
+            {
+
+                name: "1. 달 궤도 슬링샷",
+
+                description: "지구와 달의 중력을 활용해 목표 정거장에 도달하세요.",
+
+                planets: [
+
+                    { x: 300, y: 350, r: 45, mass: 1800, color: '#3b82f6', name: 'Earth' },
+
+                    { x: 600, y: 250, r: 24, mass: 450, color: '#94a3b8', name: 'Moon' }
+
+                ],
+
+                start: new Vec2(120, 350),
+
+                target: { x: 780, y: 200, r: 28 },
+
+                collectibles: [
+
+                    { x: 450, y: 180, r: 12, collected: false },
+
+                    { x: 620, y: 150, r: 12, collected: false }
+
+                ]
+
+            },
+
+            {
+
+                name: "2. 쌍성계 8자 궤도",
+
+                description: "두 거대 행성 사이의 8자 궤도를 그리며 슬링샷하세요.",
+
+                planets: [
+
+                    { x: 350, y: 250, r: 40, mass: 1500, color: '#a855f7', name: 'Alpha' },
+
+                    { x: 600, y: 400, r: 42, mass: 1600, color: '#f59e0b', name: 'Beta' }
+
+                ],
+
+                start: new Vec2(120, 200),
+
+                target: { x: 800, y: 450, r: 28 },
+
+                collectibles: [
+
+                    { x: 480, y: 320, r: 12, collected: false },
+
+                    { x: 380, y: 420, r: 12, collected: false },
+
+                    { x: 700, y: 280, r: 12, collected: false }
+
+                ]
+
+            },
+
+            {
+
+                name: "3. 블랙홀 워프 탈출",
+
+                description: "중심 블랙홀의 사건의 지평선을 피하여 목표 지점에 도달하세요.",
+
+                planets: [
+
+                    { x: 480, y: 320, r: 25, mass: 3500, color: '#000000', border: '#ef4444', isBlackHole: true, name: 'Singularity' },
+
+                    { x: 280, y: 180, r: 30, mass: 800, color: '#10b981', name: 'Gas Giant' }
+
+                ],
+
+                start: new Vec2(120, 500),
+
+                target: { x: 820, y: 150, r: 28 },
+
+                collectibles: [
+
+                    { x: 480, y: 160, r: 12, collected: false },
+
+                    { x: 380, y: 380, r: 12, collected: false },
+
+                    { x: 620, y: 280, r: 12, collected: false }
+
+                ]
+
+            },
+
+            {
+
+                name: "4. 소행성지대 우회 탐사",
+
+                description: "중력 인력과 소행성을 우회하여 정밀 탐사선을 인도하세요.",
+
+                planets: [
+
+                    { x: 400, y: 280, r: 35, mass: 1400, color: '#06b6d4', name: 'Cyan Prime' },
+
+                    { x: 650, y: 420, r: 38, mass: 1500, color: '#e11d48', name: 'Crimson' }
+
+                ],
+
+                start: new Vec2(100, 150),
+
+                target: { x: 820, y: 520, r: 28 },
+
+                collectibles: [
+
+                    { x: 280, y: 300, r: 12, collected: false },
+
+                    { x: 520, y: 480, r: 12, collected: false },
+
+                    { x: 750, y: 250, r: 12, collected: false }
+
+                ]
+
+            },
+
+            {
+
+                name: "5. 동적 공전 행성 탐사",
+
+                description: "실시간으로 공전하는 행성 시스템의 역동적 중력장을 예측하세요.",
+
+                planets: [
+
+                    { x: 480, y: 320, r: 50, mass: 2800, color: '#f97316', name: 'Sun' },
+
+                    { x: 680, y: 320, r: 22, mass: 600, color: '#38bdf8', orbitCenter: {x:480, y:320}, orbitRadius: 200, orbitSpeed: 0.015, angle: 0, name: 'Astra' }
+
+                ],
+
+                start: new Vec2(100, 320),
+
+                target: { x: 850, y: 320, r: 28 },
+
+                collectibles: [
+
+                    { x: 480, y: 120, r: 12, collected: false },
+
+                    { x: 480, y: 520, r: 12, collected: false }
+
+                ]
+
+            },
+
+            {
+
+                name: "🛠️ 샌드박스 (자유 실험실)",
+
+                description: "행성을 자유롭게 추가하여 중력장 궤적을 연구하세요.",
+
+                planets: [],
+
+                start: new Vec2(120, 320),
+
+                target: { x: 820, y: 320, r: 28 },
+
+                collectibles: []
+
+            }
+
+        ];
+
+
+
+        const canvas = document.getElementById('simCanvas');
+
+        const ctx = canvas.getContext('2d');
+
+
+
+        let currentLevelIdx = 0;
+
+        let currentLevel = null;
+
+        let attempts = 0;
+
+        let collectedCount = 0;
+
+
+
+        // Space Probe Physics Object
+
+        let probe = {
+
+            pos: new Vec2(),
+
+            vel: new Vec2(),
+
+            acc: new Vec2(),
+
+            radius: 6,
+
+            active: false,
+
+            trail: [],
+
+            minDistanceToPlanet: Infinity
+
+        };
+
+
+
+        // Slingshot Aiming Controls
+
+        let isDragging = false;
+
+        let dragStart = new Vec2();
+
+        let dragCurrent = new Vec2();
+
+        let showVectors = true;
+
+        let showGrid = false;
+
+
+
+        // Particle System
+
+        let particles = [];
+
+
+
+        // Dynamic Resize Handler
+
+        function resizeCanvas() {
+
+            const rect = canvas.parentElement.getBoundingClientRect();
+
+            canvas.width = rect.width;
+
+            canvas.height = rect.height;
+
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        resizeCanvas();
+
+
+
+        // Calculate gravitational acceleration on a given position
+
+        function getGravitationalAcceleration(pos, planets) {
+
+            let acc = new Vec2(0, 0);
+
+            planets.forEach(p => {
+
+                const diff = new Vec2(p.x, p.y).sub(pos);
+
+                const r = diff.mag();
+
+                const minR = p.r + 2; // Collision radius buffer
+
+                if (r > minR) {
+
+                    const forceMag = (G * p.mass) / (r * r);
+
+                    const forceDir = diff.normalize().mult(forceMag);
+
+                    acc.add(forceDir);
+
+                }
+
+            });
+
+            return acc;
+
+        }
+
+
+
+        // Predict Future Trajectory Path (Verlet Numerical Step)
+
+        function predictTrajectory() {
+
+            const path = [];
+
+            let simPos = probe.pos.copy();
+
+            
+
+            // Calculate velocity from aim vector or sliders
+
+            let simVel;
+
+            if (isDragging) {
+
+                const pull = dragStart.copy().sub(dragCurrent);
+
+                simVel = pull.mult(0.12);
+
+            } else {
+
+                const angleRad = parseFloat(document.getElementById('slider-angle').value) * Math.PI / 180;
+
+                const power = parseFloat(document.getElementById('slider-power').value) * 18;
+
+                simVel = new Vec2(Math.cos(angleRad) * power, Math.sin(angleRad) * power);
+
+            }
+
+
+
+            const simPlanets = JSON.parse(JSON.stringify(currentLevel.planets));
+
+            const maxSteps = 400;
+
+
+
+            for (let step = 0; step < maxSteps; step++) {
+
+                path.push(simPos.copy());
+
+
+
+                // Update orbiting planets in simulation copy
+
+                simPlanets.forEach(p => {
+
+                    if (p.orbitCenter) {
+
+                        p.angle = (p.angle || 0) + p.orbitSpeed;
+
+                        p.x = p.orbitCenter.x + Math.cos(p.angle) * p.orbitRadius;
+
+                        p.y = p.orbitCenter.y + Math.sin(p.angle) * p.orbitRadius;
+
+                    }
+
+                });
+
+
+
+                const acc = getGravitationalAcceleration(simPos, simPlanets);
+
+                simVel.add(acc.mult(DT));
+
+                simPos.add(simVel.copy().mult(DT));
+
+
+
+                // Collision check in trajectory
+
+                let hitPlanet = false;
+
+                simPlanets.forEach(p => {
+
+                    if (simPos.dist(new Vec2(p.x, p.y)) < p.r + probe.radius) {
+
+                        hitPlanet = true;
+
+                    }
+
+                });
+
+
+
+                // Target reach check
+
+                if (simPos.dist(new Vec2(currentLevel.target.x, currentLevel.target.y)) < currentLevel.target.r) {
+
+                    break;
+
+                }
+
+
+
+                if (hitPlanet || simPos.x < -100 || simPos.x > canvas.width + 100 || simPos.y < -100 || simPos.y > canvas.height + 100) {
+
+                    break;
+
+                }
+
+            }
+
+            return path;
+
+        }
+
+
+
+        function loadLevel(index) {
+
+            currentLevelIdx = index;
+
+            // Deep clone level template
+
+            currentLevel = JSON.parse(JSON.stringify(LEVELS[index]));
+
+            
+
+            probe.pos = new Vec2(currentLevel.start.x, currentLevel.start.y);
+
+            probe.vel = new Vec2(0, 0);
+
+            probe.acc = new Vec2(0, 0);
+
+            probe.active = false;
+
+            probe.trail = [];
+
+            probe.minDistanceToPlanet = Infinity;
+
+
+
+            collectedCount = 0;
+
+            updateHUD();
+
+
+
+            // Toggle Sandbox controls visibility
+
+            const sbBox = document.getElementById('sandbox-controls');
+
+            if (index === 5) {
+
+                sbBox.classList.remove('hidden');
+
+            } else {
+
+                sbBox.classList.add('hidden');
+
+            }
+
+
+
+            document.getElementById('sim-status-badge').textContent = "발사 준비 완료";
+
+            document.getElementById('sim-status-badge').className = "text-[10px] px-2 py-0.5 rounded-full bg-blue-900/80 text-blue-300";
+
+        }
+
+
+
+        function updateHUD() {
+
+            document.getElementById('hud-level').textContent = currentLevel.name;
+
+            document.getElementById('hud-attempts').textContent = attempts;
+
+            const totalCollects = currentLevel.collectibles.length;
+
+            document.getElementById('hud-score').textContent = `${collectedCount} / ${totalCollects}`;
+
+        }
+
+
+
+        function spawnParticles(x, y, color, count = 20) {
+
+            for (let i = 0; i < count; i++) {
+
+                const angle = Math.random() * Math.PI * 2;
+
+                const speed = Math.random() * 5 + 1;
+
+                particles.push({
+
+                    pos: new Vec2(x, y),
+
+                    vel: new Vec2(Math.cos(angle) * speed, Math.sin(angle) * speed),
+
+                    life: 1.0,
+
+                    decay: Math.random() * 0.03 + 0.02,
+
+                    color: color,
+
+                    size: Math.random() * 3 + 2
+
+                });
+
+            }
+
+        }
+
+
+
+        function updateParticles() {
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+
+                const p = particles[i];
+
+                p.pos.add(p.vel);
+
+                p.life -= p.decay;
+
+                if (p.life <= 0) {
+
+                    particles.splice(i, 1);
+
+                }
+
+            }
+
+        }
+
+
+
+        function renderParticles() {
+
+            particles.forEach(p => {
+
+                ctx.save();
+
+                ctx.globalAlpha = p.life;
+
+                ctx.fillStyle = p.color;
+
+                ctx.beginPath();
+
+                ctx.arc(p.pos.x, p.pos.y, p.size, 0, Math.PI * 2);
+
+                ctx.fill();
+
+                ctx.restore();
+
+            });
+
+        }
+
+
+
+        function renderGravityGrid() {
+
+            const gridSpacing = 40;
+
+            ctx.strokeStyle = 'rgba(59, 130, 246, 0.08)';
+
+            ctx.lineWidth = 1;
+
+
+
+            for (let x = 0; x < canvas.width; x += gridSpacing) {
+
+                ctx.beginPath();
+
+                for (let y = 0; y < canvas.height; y += gridSpacing) {
+
+                    let offset = new Vec2(0, 0);
+
+                    currentLevel.planets.forEach(p => {
+
+                        const d = new Vec2(p.x, p.y).sub(new Vec2(x, y));
+
+                        const dist = d.mag();
+
+                        if (dist > 10) {
+
+                            const pull = (p.mass / (dist * 0.5));
+
+                            offset.add(d.normalize().mult(Math.min(pull, 15)));
+
+                        }
+
+                    });
+
+                    if (y === 0) ctx.moveTo(x + offset.x, y + offset.y);
+
+                    else ctx.lineTo(x + offset.x, y + offset.y);
+
+                }
+
+                ctx.stroke();
+
+            }
+
+        }
+
+
+
+        function renderVectorField() {
+
+            const step = 60;
+
+            ctx.strokeStyle = 'rgba(147, 197, 253, 0.2)';
+
+            ctx.lineWidth = 1;
+
+
+
+            for (let x = step / 2; x < canvas.width; x += step) {
+
+                for (let y = step / 2; y < canvas.height; y += step) {
+
+                    const pos = new Vec2(x, y);
+
+                    const acc = getGravitationalAcceleration(pos, currentLevel.planets);
+
+                    const mag = acc.mag();
+
+                    if (mag > 0.1) {
+
+                        const dir = acc.normalize().mult(Math.min(mag * 2, 18));
+
+                        ctx.beginPath();
+
+                        ctx.moveTo(x, y);
+
+                        ctx.lineTo(x + dir.x, y + dir.y);
+
+                        ctx.stroke();
+
+
+
+                        // Arrow head
+
+                        ctx.fillStyle = 'rgba(147, 197, 253, 0.3)';
+
+                        ctx.beginPath();
+
+                        ctx.arc(x + dir.x, y + dir.y, 2, 0, Math.PI * 2);
+
+                        ctx.fill();
+
+                    }
+
+                }
+
+            }
+
+        }
+
+
+
+        function render() {
+
+            // Dark space background gradient
+
+            const bgGrad = ctx.createRadialGradient(canvas.width / 2, canvas.height / 2, 100, canvas.width / 2, canvas.height / 2, Math.max(canvas.width, canvas.height));
+
+            bgGrad.addColorStop(0, '#0f172a');
+
+            bgGrad.addColorStop(1, '#020617');
+
+            ctx.fillStyle = bgGrad;
+
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+
+
+            // Optional Grid & Vector Field Visualizers
+
+            if (showGrid) renderGravityGrid();
+
+            if (showVectors) renderVectorField();
+
+
+
+            // Render Target Destination
+
+            const tgt = currentLevel.target;
+
+            ctx.save();
+
+            ctx.strokeStyle = '#10b981';
+
+            ctx.lineWidth = 2;
+
+            ctx.setLineDash([6, 4]);
+
+            ctx.beginPath();
+
+            ctx.arc(tgt.x, tgt.y, tgt.r + Math.sin(Date.now() * 0.005) * 4, 0, Math.PI * 2);
+
+            ctx.stroke();
+
+            ctx.restore();
+
+
+
+            // Target Core Icon
+
+            ctx.fillStyle = '#10b981';
+
+            ctx.beginPath();
+
+            ctx.arc(tgt.x, tgt.y, 10, 0, Math.PI * 2);
+
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+
+            ctx.font = '10px Inter';
+
+            ctx.textAlign = 'center';
+
+            ctx.fillText('TARGET', tgt.x, tgt.y - tgt.r - 8);
+
+
+
+            // Render Research Collectibles
+
+            currentLevel.collectibles.forEach(c => {
+
+                if (!c.collected) {
+
+                    ctx.save();
+
+                    ctx.fillStyle = '#f59e0b';
+
+                    ctx.shadowColor = '#f59e0b';
+
+                    ctx.shadowBlur = 10;
+
+                    ctx.beginPath();
+
+                    ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+
+                    ctx.fill();
+
+                    ctx.restore();
+
+                }
+
+            });
+
+
+
+            // Render Planets
+
+            currentLevel.planets.forEach(p => {
+
+                ctx.save();
+
+                if (p.isBlackHole) {
+
+                    // Black Hole Glow Ring
+
+                    const bhGlow = ctx.createRadialGradient(p.x, p.y, p.r * 0.8, p.x, p.y, p.r * 2);
+
+                    bhGlow.addColorStop(0, '#ef4444');
+
+                    bhGlow.addColorStop(0.5, 'rgba(239, 68, 68, 0.3)');
+
+                    bhGlow.addColorStop(1, 'transparent');
+
+                    ctx.fillStyle = bhGlow;
+
+                    ctx.beginPath();
+
+                    ctx.arc(p.x, p.y, p.r * 2, 0, Math.PI * 2);
+
+                    ctx.fill();
+
+
+
+                    ctx.fillStyle = '#000000';
+
+                    ctx.strokeStyle = '#ef4444';
+
+                    ctx.lineWidth = 2;
+
+                    ctx.beginPath();
+
+                    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+
+                    ctx.fill();
+
+                    ctx.stroke();
+
+                } else {
+
+                    // Planet Body & Atmosphere Glow
+
+                    const planGlow = ctx.createRadialGradient(p.x, p.y, p.r * 0.5, p.x, p.y, p.r * 1.5);
+
+                    planGlow.addColorStop(0, p.color);
+
+                    planGlow.addColorStop(1, 'transparent');
+
+                    ctx.fillStyle = planGlow;
+
+                    ctx.beginPath();
+
+                    ctx.arc(p.x, p.y, p.r * 1.5, 0, Math.PI * 2);
+
+                    ctx.fill();
+
+
+
+                    ctx.fillStyle = p.color;
+
+                    ctx.beginPath();
+
+                    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+
+                    ctx.fill();
+
+                }
+
+                ctx.restore();
+
+
+
+                // Planet Name Label
+
+                ctx.fillStyle = '#94a3b8';
+
+                ctx.font = '10px Inter';
+
+                ctx.textAlign = 'center';
+
+                ctx.fillText(p.name || 'Planet', p.x, p.y + p.r + 14);
+
+            });
+
+
+
+            // Render Slingshot Drag Aiming Line & Trajectory Prediction
+
+            if (!probe.active) {
+
+                const trajectory = predictTrajectory();
+
+                ctx.save();
+
+                ctx.strokeStyle = '#38bdf8';
+
+                ctx.lineWidth = 2;
+
+                ctx.setLineDash([4, 4]);
+
+                ctx.beginPath();
+
+                trajectory.forEach((pt, i) => {
+
+                    if (i === 0) ctx.moveTo(pt.x, pt.y);
+
+                    else ctx.lineTo(pt.x, pt.y);
+
+                });
+
+                ctx.stroke();
+
+                ctx.restore();
+
+
+
+                // Mouse Drag Impulse Line
+
+                if (isDragging) {
+
+                    ctx.save();
+
+                    ctx.strokeStyle = '#f43f5e';
+
+                    ctx.lineWidth = 3;
+
+                    ctx.beginPath();
+
+                    ctx.moveTo(probe.pos.x, probe.pos.y);
+
+                    ctx.lineTo(dragCurrent.x, dragCurrent.y);
+
+                    ctx.stroke();
+
+
+
+                    // Arrowhead
+
+                    ctx.fillStyle = '#f43f5e';
+
+                    ctx.beginPath();
+
+                    ctx.arc(dragCurrent.x, dragCurrent.y, 5, 0, Math.PI * 2);
+
+                    ctx.fill();
+
+                    ctx.restore();
+
+                }
+
+            }
+
+
+
+            // Render Probe Trail
+
+            if (probe.trail.length > 1) {
+
+                ctx.save();
+
+                ctx.strokeStyle = 'rgba(56, 189, 248, 0.6)';
+
+                ctx.lineWidth = 2;
+
+                ctx.beginPath();
+
+                probe.trail.forEach((pt, i) => {
+
+                    if (i === 0) ctx.moveTo(pt.x, pt.y);
+
+                    else ctx.lineTo(pt.x, pt.y);
+
+                });
+
+                ctx.stroke();
+
+                ctx.restore();
+
+            }
+
+
+
+            // Render Space Probe
+
+            ctx.save();
+
+            ctx.fillStyle = '#38bdf8';
+
+            ctx.shadowColor = '#38bdf8';
+
+            ctx.shadowBlur = 12;
+
+            ctx.beginPath();
+
+            ctx.arc(probe.pos.x, probe.pos.y, probe.radius, 0, Math.PI * 2);
+
+            ctx.fill();
+
+            ctx.restore();
+
+
+
+            // Render Particle Effects
+
+            renderParticles();
+
+        }
+
+
+
+        function update() {
+
+            // Update Orbiting Planets
+
+            currentLevel.planets.forEach(p => {
+
+                if (p.orbitCenter) {
+
+                    p.angle = (p.angle || 0) + p.orbitSpeed;
+
+                    p.x = p.orbitCenter.x + Math.cos(p.angle) * p.orbitRadius;
+
+                    p.y = p.orbitCenter.y + Math.sin(p.angle) * p.orbitRadius;
+
+                }
+
+            });
+
+
+
+            // Update Probe Physics
+
+            if (probe.active) {
+
+                // Calculate Net Gravitational Acceleration
+
+                probe.acc = getGravitationalAcceleration(probe.pos, currentLevel.planets);
+
+
+
+                // Velocity Verlet Integration Step
+
+                probe.vel.add(probe.acc.copy().mult(DT));
+
+                probe.pos.add(probe.vel.copy().mult(DT));
+
+
+
+                // Append Trail Position
+
+                probe.trail.push(probe.pos.copy());
+
+                if (probe.trail.length > 250) probe.trail.shift();
+
+
+
+                // Thruster particles
+
+                if (Math.random() < 0.6) {
+
+                    particles.push({
+
+                        pos: probe.pos.copy(),
+
+                        vel: probe.vel.copy().mult(-0.2).add(new Vec2((Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2)),
+
+                        life: 0.6,
+
+                        decay: 0.05,
+
+                        color: '#38bdf8',
+
+                        size: 2
+
+                    });
+
+                }
+
+
+
+                // Collectible Pickup Collision
+
+                currentLevel.collectibles.forEach(c => {
+
+                    if (!c.collected && probe.pos.dist(new Vec2(c.x, c.y)) < c.r + probe.radius) {
+
+                        c.collected = true;
+
+                        collectedCount++;
+
+                        audio.playCollect();
+
+                        spawnParticles(c.x, c.y, '#f59e0b', 15);
+
+                        updateHUD();
+
+                    }
+
+                });
+
+
+
+                // Telemetry Data Calculation
+
+                const speed = probe.vel.mag();
+
+                const accMag = probe.acc.mag();
+
+                document.getElementById('tele-vel').textContent = `${(speed * 0.1).toFixed(2)} km/s`;
+
+                document.getElementById('tele-acc').textContent = `${(accMag * 0.1).toFixed(2)} m/s²`;
+
+                
+
+                // Specific Mechanical Energy E = v^2/2 - G*M/r
+
+                let potentialEnergy = 0;
+
+                currentLevel.planets.forEach(p => {
+
+                    const r = probe.pos.dist(new Vec2(p.x, p.y));
+
+                    if (r < probe.minDistanceToPlanet) probe.minDistanceToPlanet = r;
+
+                    potentialEnergy -= (G * p.mass) / r;
+
+                });
+
+                const totalEnergy = 0.5 * speed * speed + potentialEnergy;
+
+                document.getElementById('tele-energy').textContent = `${(totalEnergy * 0.01).toFixed(1)} J/kg`;
+
+                document.getElementById('tele-rmin').textContent = `${probe.minDistanceToPlanet.toFixed(0)} px`;
+
+
+
+                // Planet Crash Collision Check
+
+                currentLevel.planets.forEach(p => {
+
+                    if (probe.pos.dist(new Vec2(p.x, p.y)) < p.r + probe.radius) {
+
+                        probe.active = false;
+
+                        audio.playCrash();
+
+                        spawnParticles(probe.pos.x, probe.pos.y, '#f43f5e', 35);
+
+                        document.getElementById('sim-status-badge').textContent = "행성 충돌!";
+
+                        document.getElementById('sim-status-badge').className = "text-[10px] px-2 py-0.5 rounded-full bg-rose-900/80 text-rose-300";
+
+                    }
+
+                });
+
+
+
+                // Check Target Arrival
+
+                const tgt = currentLevel.target;
+
+                if (probe.pos.dist(new Vec2(tgt.x, tgt.y)) < tgt.r) {
+
+                    probe.active = false;
+
+                    audio.playWin();
+
+                    spawnParticles(tgt.x, tgt.y, '#10b981', 50);
+
+                    showVictoryModal();
+
+                }
+
+
+
+                // Out of Bounds Reset
+
+                if (probe.pos.x < -150 || probe.pos.x > canvas.width + 150 || probe.pos.y < -150 || probe.pos.y > canvas.height + 150) {
+
+                    probe.active = false;
+
+                    document.getElementById('sim-status-badge').textContent = "궤도 이탈";
+
+                    document.getElementById('sim-status-badge').className = "text-[10px] px-2 py-0.5 rounded-full bg-amber-900/80 text-amber-300";
+
+                }
+
+            }
+
+
+
+            updateParticles();
+
+        }
+
+
+
+        function triggerLaunch(velVector) {
+
+            if (probe.active) return;
+
+            attempts++;
+
+            probe.pos = new Vec2(currentLevel.start.x, currentLevel.start.y);
+
+            probe.vel = velVector;
+
+            probe.active = true;
+
+            probe.trail = [];
+
+            probe.minDistanceToPlanet = Infinity;
+
+            audio.playLaunch();
+
+
+
+            updateHUD();
+
+            document.getElementById('sim-status-badge').textContent = "시뮬레이션 가동 중";
+
+            document.getElementById('sim-status-badge').className = "text-[10px] px-2 py-0.5 rounded-full bg-emerald-900/80 text-emerald-300";
+
+        }
+
+
+
+        // Mouse / Touch Event Handlers for Slingshot Dragging
+
+        canvas.addEventListener('pointerdown', (e) => {
+
+            const rect = canvas.getBoundingClientRect();
+
+            const clickPos = new Vec2(e.clientX - rect.left, e.clientY - rect.top);
+
+
+
+            if (currentLevelIdx === 5) { // Sandbox Mode: Add Planet
+
+                const mass = parseFloat(document.getElementById('sb-mass').value) || 1200;
+
+                currentLevel.planets.push({
+
+                    x: clickPos.x,
+
+                    y: clickPos.y,
+
+                    r: Math.max(15, Math.min(MassToRadius(mass), 50)),
+
+                    mass: mass,
+
+                    color: '#c084fc',
+
+                    name: `Custom-${currentLevel.planets.length + 1}`
+
+                });
+
+                return;
+
+            }
+
+
+
+            if (!probe.active && clickPos.dist(probe.pos) < 50) {
+
+                isDragging = true;
+
+                dragStart = probe.pos.copy();
+
+                dragCurrent = clickPos;
+
+            }
+
+        });
+
+
+
+        canvas.addEventListener('pointermove', (e) => {
+
+            if (isDragging) {
+
+                const rect = canvas.getBoundingClientRect();
+
+                dragCurrent = new Vec2(e.clientX - rect.left, e.clientY - rect.top);
+
+
+
+                // Update UI Sliders dynamically from drag vector
+
+                const pull = dragStart.copy().sub(dragCurrent);
+
+                let angleDeg = Math.atan2(pull.y, pull.x) * 180 / Math.PI;
+
+                if (angleDeg < 0) angleDeg += 360;
+
+                const power = Math.min(pull.mag() * 0.08, 15);
+
+
+
+                document.getElementById('slider-angle').value = angleDeg.toFixed(0);
+
+                document.getElementById('val-angle').textContent = `${angleDeg.toFixed(1)}°`;
+
+                document.getElementById('slider-power').value = power.toFixed(1);
+
+                document.getElementById('val-power').textContent = `${power.toFixed(2)} km/s`;
+
+            }
+
+        });
+
+
+
+        canvas.addEventListener('pointerup', () => {
+
+            if (isDragging) {
+
+                isDragging = false;
+
+                const pull = dragStart.copy().sub(dragCurrent);
+
+                const vel = pull.mult(0.12);
+
+                triggerLaunch(vel);
+
+            }
+
+        });
+
+
+
+        function MassToRadius(m) {
+
+            return Math.sqrt(m) * 0.9;
+
+        }
+
+
+
+        document.getElementById('slider-angle').addEventListener('input', (e) => {
+
+            document.getElementById('val-angle').textContent = `${parseFloat(e.target.value).toFixed(1)}°`;
+
+        });
+
+        document.getElementById('slider-power').addEventListener('input', (e) => {
+
+            document.getElementById('val-power').textContent = `${parseFloat(e.target.value).toFixed(2)} km/s`;
+
+        });
+
+
+
+        document.getElementById('btn-manual-launch').addEventListener('click', () => {
+
+            const angleRad = parseFloat(document.getElementById('slider-angle').value) * Math.PI / 180;
+
+            const power = parseFloat(document.getElementById('slider-power').value) * 18;
+
+            const vel = new Vec2(Math.cos(angleRad) * power, Math.sin(angleRad) * power);
+
+            triggerLaunch(vel);
+
+        });
+
+
+
+        document.getElementById('btn-reset-launch').addEventListener('click', () => {
+
+            loadLevel(currentLevelIdx);
+
+        });
+
+
+
+        document.getElementById('level-select').addEventListener('change', (e) => {
+
+            attempts = 0;
+
+            loadLevel(parseInt(e.target.value));
+
+        });
+
+
+
+        document.getElementById('btn-toggle-vectors').addEventListener('click', () => {
+
+            showVectors = !showVectors;
+
+            document.getElementById('vector-toggle-text').textContent = `중력장 표시: ${showVectors ? 'ON' : 'OFF'}`;
+
+        });
+
+
+
+        document.getElementById('btn-toggle-grid').addEventListener('click', () => {
+
+            showGrid = !showGrid;
+
+            document.getElementById('grid-toggle-text').textContent = `중력 격자: ${showGrid ? 'ON' : 'OFF'}`;
+
+        });
+
+
+
+        document.getElementById('btn-clear-sandbox')?.addEventListener('click', () => {
+
+            if (currentLevelIdx === 5) {
+
+                currentLevel.planets = [];
+
+            }
+
+        });
+
+
+
+        // Keyboard Shortcut Keys
+
+        window.addEventListener('keydown', (e) => {
+
+            if (e.key === 'r' || e.key === 'R') loadLevel(currentLevelIdx);
+
+            if (e.key === ' ') {
+
+                e.preventDefault();
+
+                document.getElementById('btn-manual-launch').click();
+
+            }
+
+        });
+
+
+
+        // Modal Controls
+
+        document.getElementById('btn-math-modal').addEventListener('click', () => {
+
+            document.getElementById('modal-math').classList.remove('hidden');
+
+        });
+
+        document.getElementById('btn-leaderboard').addEventListener('click', () => {
+
+            renderLeaderboard();
+
+            document.getElementById('modal-leaderboard').classList.remove('hidden');
+
+        });
+
+
+
+        document.querySelectorAll('.btn-close-modal').forEach(b => {
+
+            b.addEventListener('click', () => {
+
+                document.querySelectorAll('#modal-math, #modal-leaderboard, #modal-victory').forEach(m => m.classList.add('hidden'));
+
+            });
+
+        });
+
+
+
+        function showVictoryModal() {
+
+            document.getElementById('vic-attempts').textContent = `${attempts}회`;
+
+            document.getElementById('vic-data').textContent = `${collectedCount} / ${currentLevel.collectibles.length}`;
+
+            document.getElementById('modal-victory').classList.remove('hidden');
+
+        }
+
+
+
+        document.getElementById('btn-next-level').addEventListener('click', () => {
+
+            document.getElementById('modal-victory').classList.add('hidden');
+
+            const nextIdx = (currentLevelIdx + 1) % (LEVELS.length - 1);
+
+            document.getElementById('level-select').value = nextIdx;
+
+            attempts = 0;
+
+            loadLevel(nextIdx);
+
+        });
+
+
+
+        // LocalStorage Leaderboard System
+
+        function renderLeaderboard() {
+
+            const list = document.getElementById('leaderboard-list');
+
+            const records = JSON.parse(localStorage.getItem('slingshot_records') || '[]');
+
+            if (records.length === 0) {
+
+                list.innerHTML = `<div class="text-slate-500 text-center py-4">등록된 부스 기록이 없습니다.</div>`;
+
+                return;
+
+            }
+
+            list.innerHTML = records.map((r, i) => `
+
+                <div class="flex justify-between items-center bg-slate-950 p-2.5 rounded border border-slate-800 text-xs">
+
+                    <div class="flex items-center space-x-2">
+
+                        <span class="font-bold ${i < 3 ? 'text-amber-400' : 'text-slate-400'}">#${i + 1}</span>
+
+                        <span class="text-slate-200 font-medium">${r.name}</span>
+
+                    </div>
+
+                    <div class="text-right">
+
+                        <span class="text-blue-400 font-bold">${r.level}</span>
+
+                        <span class="text-slate-500 ml-2">${r.attempts}시도</span>
+
+                    </div>
+
+                </div>
+
+            `).join('');
+
+        }
+
+
+
+        document.getElementById('btn-save-record').addEventListener('click', () => {
+
+            const name = document.getElementById('player-name-input').value.trim() || '익명 탐사원';
+
+            const records = JSON.parse(localStorage.getItem('slingshot_records') || '[]');
+
+            records.push({
+
+                name: name,
+
+                level: currentLevel.name.split('.')[0],
+
+                attempts: attempts,
+
+                score: collectedCount,
+
+                date: new Date().toLocaleTimeString([], { hour: '2-25', minute: '2-digit' })
+
+            });
+
+            records.sort((a, b) => a.attempts - b.attempts);
+
+            localStorage.setItem('slingshot_records', JSON.stringify(records.slice(0, 10)));
+
+            document.getElementById('modal-victory').classList.add('hidden');
+
+            renderLeaderboard();
+
+            document.getElementById('modal-leaderboard').classList.remove('hidden');
+
+        });
+
+
+
+        document.getElementById('btn-clear-scores').addEventListener('click', () => {
+
+            localStorage.removeItem('slingshot_records');
+
+            renderLeaderboard();
+
+        });
+
+
+
+        // Audio Mute Toggle
+
+        document.getElementById('btn-sound-toggle').addEventListener('click', () => {
+
+            audio.muted = !audio.muted;
+
+            document.getElementById('sound-icon').className = audio.muted ? 'fa-solid fa-volume-xmark text-rose-400' : 'fa-solid fa-volume-high text-slate-300';
+
+        });
+
+
+
+        function gameLoop() {
+
+            update();
+
+            render();
+
+            requestAnimationFrame(gameLoop);
+
+        }
+
+
+
+        window.onload = function() {
+
+            loadLevel(0);
+
+            gameLoop();
+
+        };
+
+    </script>
+
+</body>
+
+</html>
+
